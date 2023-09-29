@@ -13,7 +13,7 @@ case $choice in
 	"$option1")
 		swaylock ;;
 	"$option2")
-    systemctl suspend ;;
+    systemctl suspend && swaylock ;;
 	"$option3")
     hyprctl dispatch exit ;;
 	"$option4")
