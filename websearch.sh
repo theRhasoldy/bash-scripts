@@ -16,6 +16,7 @@ CACHE_DIR="$HOME/.cache/websearch"
 BROWSER="vivaldi-snapshot"
 
 SITES=(
+  ["󰖟"]=""
   [""]="https://www.google.com/search?q="
   [""]="https://www.github.com/search?q="
   ["󰗃"]="https://www.youtube.com/results?search_query="
@@ -135,12 +136,12 @@ handle_query()
     else
       # Check if search engine set.
       if [ "$SITE_TO_USE" ]; then
-        query=$(echo "$(gen_queries_list $SITE_TO_USE)" | rofi -config ~/.config/rofi/app.rasi -dmenu -p "󰜏 ($SITE_TO_USE)")
+        query=$(echo "$(gen_queries_list $SITE_TO_USE)" | rofi -config ~/.config/rofi/websearch.rasi -dmenu -p "󰜏 ($SITE_TO_USE)")
 
         handle_query "$SITE_TO_USE" "$query"
       else
-        site=$(echo "$(gen_sites_list)" | rofi -config ~/.config/rofi/app.rasi -dmenu -p "󰜏" -no-custom)
-        query=$(echo "$(gen_queries_list $site)" | rofi -config ~/.config/rofi/app.rasi -dmenu -p "󰜏 ($site)")
+        site=$(echo "$(gen_sites_list)" | rofi -config ~/.config/rofi/websearch.rasi -dmenu -p "󰜏" -no-custom)
+        query=$(echo "$(gen_queries_list $site)" | rofi -config ~/.config/rofi/websearch.rasi -dmenu -p "󰜏 ($site)")
 
         handle_query "$site" "$query"
       fi
