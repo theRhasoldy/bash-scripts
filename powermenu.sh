@@ -11,9 +11,9 @@ choice=$(echo -e "$options" | rofi -config ~/.config/rofi/powermenu.rasi -dmenu 
 
 case $choice in
 	"$option1")
-		chayang -d 1 && swaylock ;;
+    hyprlock ;;
 	"$option2")
-    chayang -d 1 && systemctl suspend ; swaylock ;;
+    systemctl suspend ; hyprlock ;;
 	"$option3")
     chayang -d 0.25 && hyprctl dispatch exit ;;
 	"$option4")
@@ -22,3 +22,4 @@ case $choice in
 		chayang -d 0.25 && systemctl poweroff ;;
 esac
 
+exit 0

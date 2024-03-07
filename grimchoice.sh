@@ -15,3 +15,5 @@ case $choice in
       grimshot --notify save area
     ;;
 esac
+
+exit 0

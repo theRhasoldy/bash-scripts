@@ -13,7 +13,7 @@ declare -A SITES
 SITE_TO_USE=""
 
 CACHE_DIR="$HOME/.cache/websearch"
-BROWSER="vivaldi-snapshot"
+BROWSER="vivaldi-stable"
 
 SITES=(
   ["󰖟"]=""
@@ -165,3 +165,5 @@ done
 shift $((OPTIND-1))
 
 main "$@"
+
+exit 0

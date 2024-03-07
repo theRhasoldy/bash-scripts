@@ -19,3 +19,4 @@ while true; do
   # Sleep for 1 minute before checking again
   sleep 1
 done
+exit 0
