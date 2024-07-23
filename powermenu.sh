@@ -15,11 +15,11 @@ case $choice in
 	"$option2")
     systemctl suspend ; hyprlock ;;
 	"$option3")
-    chayang -d 0.25 && hyprctl dispatch exit ;;
+    hyprctl dispatch exit ;;
 	"$option4")
-    chayang -d 0.25 && systemctl reboot ;;
+    systemctl reboot ;;
 	"$option5")
-		chayang -d 0.25 && systemctl poweroff ;;
+		systemctl poweroff ;;
 esac
 
 exit 0
