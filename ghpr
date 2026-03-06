@@ -1,0 +1,147 @@
+#!/usr/bin/env bash
+
+# Exit immediately if a command exits with a non-zero status
+set -e
+
+if [ "$#" -ne 2 ]; then
+  echo "Usage: $0 <source_branch> <destination_branch>"
+  echo "Example: $0 feature/new-login main"
+  exit 1
+fi
+
+SOURCE=$1
+DEST=$2
+
+# Check if source branch exists
+if ! git rev-parse --verify "$SOURCE" >/dev/null 2>&1; then
+  echo "❌ Error: Source branch '$SOURCE' does not exist."
+  exit 1
+fi
+
+# Check if destination branch exists
+if ! git rev-parse --verify "$DEST" >/dev/null 2>&1; then
+  echo "❌ Error: Destination branch '$DEST' does not exist."
+  exit 1
+fi
+
+# Check if gemini is available
+GEMINI_AVAILABLE=false
+if command -v gemini >/dev/null 2>&1; then
+  GEMINI_AVAILABLE=true
+fi
+
+# Gather commit history
+COMMITS=$(git log --no-merges --format="- %s" "$DEST..$SOURCE")
+
+TITLE=""
+BODY=""
+
+if [ "$GEMINI_AVAILABLE" = true ]; then
+  echo "🤖 Asking Gemini to generate PR details..."
+
+  # Construct a prompt for Gemini
+  PROMPT="You are a senior developer. Based on the following git commits between '$DEST' and '$SOURCE', generate a human-readable Pull Request title and a concise description in Markdown format.
+    
+    Commits:
+    $COMMITS
+    
+    Return your response in this exact format:
+    TITLE: <Your Title Here>
+    BODY: <Your Markdown Body Here>"
+
+  # Call gemini and capture output
+  GEMINI_OUTPUT=$(echo "$PROMPT" | gemini ask 2>/dev/null || echo "")
+
+  if [ -n "$GEMINI_OUTPUT" ]; then
+    # Extract title and body
+    TITLE=$(echo "$GEMINI_OUTPUT" | grep "^TITLE:" | head -n 1 | sed 's/^TITLE: //')
+    # Extract body: everything after BODY: header
+    BODY=$(echo "$GEMINI_OUTPUT" | sed -n '/^BODY:/,$p' | sed '1s/^BODY: //' | sed '1s/^\s*//')
+  fi
+fi
+
+# Fallback or initialization if Gemini failed or isn't available
+if [ -z "$TITLE" ]; then
+  CLEAN_NAME=$(echo "$SOURCE" | sed -E 's/^(feature|bugfix|hotfix|chore)\///')
+  TITLE=$(echo "$CLEAN_NAME" | sed -E 's/[-_]/ /g' | awk '{for(i=1;i<=NF;i++)sub(/./,toupper(substr($i,1,1)),$i)}1')
+fi
+
+if [ -z "$BODY" ]; then
+  if [ -z "$COMMITS" ]; then
+    BODY="This pull request merges changes from \`$SOURCE\` into \`$DEST\`."
+  else
+    BODY=$(printf "### Overview of changes:\n\n%s" "$COMMITS")
+  fi
+fi
+
+# --- NEW: Interactive Review and Edit ---
+
+# Create a temporary file for editing
+TEMP_FILE=$(mktemp --suffix=".md")
+trap 'rm -f "$TEMP_FILE"' EXIT
+
+# Function to write current state to temp file
+# This format makes it easy for the user to see what is what
+update_temp_file() {
+  cat <<EOF >"$TEMP_FILE"
+TITLE: $TITLE
+---
+$BODY
+EOF
+}
+
+update_temp_file
+
+while true; do
+  clear
+  echo "----------------------------------------"
+  echo "🔍 PROPOSED PULL REQUEST:"
+  echo "TITLE: $TITLE"
+  echo "BODY:"
+  echo "$BODY"
+  echo "----------------------------------------"
+
+  read -p "Action: [A]pprove, [E]dit in nvim, [C]ancel: " ACTION
+  case $ACTION in
+  [Aa]*)
+    break
+    ;;
+  [Ee]*)
+    # Open nvim for editing
+    # We use </dev/tty to ensure nvim can interact with the terminal even if script inputs are redirected
+    nvim "$TEMP_FILE" </dev/tty
+
+    # Re-read the title from the first line, stripping 'TITLE: ' prefix if present
+    TITLE=$(head -n 1 "$TEMP_FILE" | sed -E 's/^[Tt][Ii][Tt][Ll][Ee]:[[:space:]]*//')
+
+    # Re-read the body: everything after the first '---' line
+    if grep -q "^---$" "$TEMP_FILE"; then
+      BODY=$(sed '1,/^---$/d' "$TEMP_FILE")
+    else
+      # Fallback: if separator is missing, take everything except the first line
+      BODY=$(tail -n +2 "$TEMP_FILE")
+    fi
+    ;;
+  [Cc]*)
+    echo "❌ PR Creation Aborted."
+    exit 0
+    ;;
+  *)
+    echo "Please enter A, E, or C."
+    ;;
+  esac
+done
+
+echo "🚀 Creating Pull Request..."
+echo "Title: $TITLE"
+echo "Base:  $DEST"
+echo "Head:  $SOURCE"
+echo "----------------------------------------"
+
+gh pr create \
+  --head "$SOURCE" \
+  --base "$DEST" \
+  --title "$TITLE" \
+  --body "$BODY"
+
+echo "✅ Pull Request created successfully!"
